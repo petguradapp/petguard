@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PetGuard - Secure Pet Recovery Tag</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --primary: #0d6efd;
+      --success: #198754;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --text: #212529;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1.5rem 1rem;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 460px;
+      background: var(--card-bg);
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      box-sizing: border-box;
+    }
+    h2 { margin-top: 0; }
+    label { font-weight: 600; font-size: 0.9rem; margin-top: 1rem; display: block; }
+    input, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.75rem;
+      margin-top: 0.35rem;
+      border: 1px solid #ced4da;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    button {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.85rem;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 8px;
+      margin-top: 1.5rem;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.92; }
+    .hidden { display: none; }
+    .tag-badge {
+      background: #e8f5e9;
+      color: var(--success);
+      padding: 0.35rem 0.8rem;
+      font-weight: 700;
+      font-size: 0.8rem;
+      border-radius: 20px;
+      display: inline-block;
+    }
+    .info-card {
+      background: #f1f3f5;
+      padding: 1.2rem;
+      border-radius: 10px;
+      margin: 1.5rem 0;
+      text-align: left;
+    }
+    .info-item { margin-bottom: 0.8rem; }
+    .btn-call {
+      display: block;
+      background: var(--success);
+      color: white;
+      text-decoration: none;
+      text-align: center;
+      padding: 0.9rem;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-top: 1rem;
+    }
+    .btn-map {
+      display: block;
+      background: var(--primary);
+      color: white;
+      text-decoration: none;
+      text-align: center;
+      padding: 0.8rem;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 0.95rem;
+      margin-top: 0.6rem;
+    }
+    #qrcode {
+      display: flex;
+      justify-content: center;
+      margin: 1.5rem 0;
+    }
+    .notice { font-size: 0.85rem; color: #6c757d; }
+    .error { color: #dc3545; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- TAG CREATOR VIEW -->
+    <div id="creatorView">
+      <h2>🐾 PetGuard Tag Creator</h2>
+      <p class="notice">
+        Zero-knowledge security: All details are encrypted client-side inside your browser before the QR is generated. No server or database ever sees your private data.
+      </p>
+
+      <form id="createForm">
+        <label for="petName">Pet Name</label>
+        <input type="text" id="petName" required placeholder="e.g. Milo" />
+
+        <label for="ownerName">Owner Name</label>
+        <input type="text" id="ownerName" required placeholder="e.g. Jane Doe" />
+
+        <label for="phone">Owner Emergency Phone</label>
+        <input type="tel" id="phone" required placeholder="e.g. +1 555-0199" />
+
+        <label for="address">Home Address & Notes</label>
+        <textarea id="address" rows="3" required placeholder="e.g. 742 Evergreen Terrace (needs allergy meds)"></textarea>
+
+        <button type="submit" id="generateBtn">Generate Secure QR Tag</button>
+      </form>
+
+      <div id="qrResult" class="hidden" style="text-align: center;">
+        <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid #dee2e6;" />
+        <h3>Your Collar Tag is Ready!</h3>
+        <p class="notice">Print this QR code and attach it to your pet's collar.</p>
+        <div id="qrcode"></div>
+        <button onclick="window.print()" style="background: #495057;">🖨️ Print Collar Tag</button>
+      </div>
+    </div>
+
+    <!-- FINDER RESCUE VIEW (SHOWN AUTOMATICALLY UPON QR SCAN) -->
+    <div id="rescueView" class="hidden" style="text-align: center;">
+      <div id="rescueContent">
+        <p class="notice">Decrypting tag details...</p>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function arrayBufferToBase64(buffer) {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function base64ToArrayBuffer(base64) {
+      base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+      while (base64.length % 4) base64 += '=';
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    // 1. Encryption & QR Generation
+    document.getElementById('createForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('generateBtn');
+      btn.disabled = true;
+      btn.textContent = 'Encrypting...';
+
+      const payload = JSON.stringify({
+        name: document.getElementById('petName').value.trim(),
+        owner: document.getElementById('ownerName').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        address: document.getElementById('address').value.trim()
+      });
+
+      // Generate AES-GCM 256-bit key and random 12-byte IV
+      const key = await window.crypto.subtle.generateKey(
+        { name: 'AES-GCM', length: 256 },
+        true,
+        ['encrypt', 'decrypt']
+      );
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+      // Encrypt payload
+      const encodedData = new TextEncoder().encode(payload);
+      const encryptedBuffer = await window.crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        encodedData
+      );
+
+      // Export key and serialize parameters to URL-safe Base64
+      const exportedRawKey = await window.crypto.subtle.exportKey('raw', key);
+      const keyStr = arrayBufferToBase64(exportedRawKey);
+      const ivStr = arrayBufferToBase64(iv);
+      const cipherStr = arrayBufferToBase64(encryptedBuffer);
+
+      // Package everything in the URL hash fragment (#)
+      // The '#' fragment is processed strictly by the browser and never sent over the network
+      const fullUrl = `${window.location.origin}${window.location.pathname}#c=${cipherStr}&k=${keyStr}&i=${ivStr}`;
+
+      document.getElementById('createForm').classList.add('hidden');
+      const qrResult = document.getElementById('qrResult');
+      qrResult.classList.remove('hidden');
+
+      document.getElementById('qrcode').innerHTML = '';
+      new QRCode(document.getElementById('qrcode'), {
+        text: fullUrl,
+        width: 220,
+        height: 220,
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    });
+
+    // 2. Hash Fragment Check & Client-Side Decryption
+    async function checkHashAndDecrypt() {
+      const hash = window.location.hash.substring(1);
+      if (!hash) return; // Normal visitor, keep creator form visible
+
+      document.getElementById('creatorView').classList.add('hidden');
+      const rescueView = document.getElementById('rescueView');
+      const rescueContent = document.getElementById('rescueContent');
+      rescueView.classList.remove('hidden');
+
+      try {
+        const params = new URLSearchParams(hash);
+        const cipherStr = params.get('c');
+        const keyStr = params.get('k');
+        const ivStr = params.get('i');
+
+        if (!cipherStr || !keyStr || !ivStr) {
+          throw new Error('Incomplete data fragment.');
+        }
+
+        const rawKey = base64ToArrayBuffer(keyStr);
+        const cryptoKey = await window.crypto.subtle.importKey(
+          'raw',
+          rawKey,
+          { name: 'AES-GCM' },
+          false,
+          ['decrypt']
+        );
+
+        const decryptedBuffer = await window.crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: new Uint8Array(base64ToArrayBuffer(ivStr)) },
+          cryptoKey,
+          base64ToArrayBuffer(cipherStr)
+        );
+
+        const pet = JSON.parse(new TextDecoder().decode(decryptedBuffer));
+
+        rescueContent.innerHTML = `
+          <div class="tag-badge">PET IDENTITY TAG</div>
+          <h1 style="margin: 0.5rem 0 0.2rem 0;">${pet.name}</h1>
+          <p class="notice" style="margin-top: 0;">Needs help returning home</p>
+
+          <div class="info-card">
+            <div class="info-item"><strong>Owner:</strong> ${pet.owner}</div>
+            <div class="info-item"><strong>Contact:</strong> ${pet.phone}</div>
+            <div class="info-item"><strong>Home / Notes:</strong><br>${pet.address}</div>
+          </div>
+
+          <a class="btn-call" href="tel:${pet.phone}">📞 Call Owner Now</a>
+          <a class="btn-map" href="https://maps.google.com/?q=${encodeURIComponent(pet.address)}" target="_blank">📍 Open Address in Maps</a>
+          <button onclick="window.location.hash=''; location.reload();" style="margin-top: 1.5rem; background: #6c757d; font-size: 0.85rem;">Create Your Own Tag</button>
+        `;
+      } catch (err) {
+        rescueContent.innerHTML = `
+          <p class="error">Access Denied / Decryption Failed</p>
+          <p class="notice">The URL fragment is missing or damaged. Contact details can only be revealed by scanning the physical collar tag.</p>
+        `;
+      }
+    }
+
+    checkHashAndDecrypt();
+  </script>
+</body>
+</html>

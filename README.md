@@ -4,3 +4,6 @@ A 100% serverless, zero-knowledge pet recovery web application hosted on GitHub 
 
 - **No Backend / No Database:** Zero maintenance and $0 hosting costs.
 - **Zero-Knowledge Privacy:** Ciphertext, IV, and cryptographic keys reside entirely inside the URL hash fragment (`#`), never leaving the client's device.
+
+
+Link to use this tool - https://likithpydi6578.github.io/petrecoveryqr/

@@ -6,4 +6,4 @@ A 100% serverless, zero-knowledge pet recovery web application hosted on GitHub 
 - **Zero-Knowledge Privacy:** Ciphertext, IV, and cryptographic keys reside entirely inside the URL hash fragment (`#`), never leaving the client's device.
 
 
-Link to use this tool - https://likithpydi6578.github.io/petrecoveryqr/
+Link to use this tool - https://likithpydi6578.github.io/petguard/
